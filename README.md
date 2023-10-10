@@ -3,6 +3,7 @@
 ## about the scripts folder:
 Repository is structures in "/scripts" for the following steps: 
 
+
 (...)
 
 ## about the data:
