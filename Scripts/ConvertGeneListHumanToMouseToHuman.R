@@ -4,7 +4,7 @@
 # Tim's original function modified by Paula 
 
 ### function to convert Human to mouse genes
-genes <- read.csv('hepatocyte-damage-score/Data/Output/HDAG.csv')
+genes <- read.csv('~/Desktop/HepatocyteDamageScore/Universal Damage Signature/HUDS.csv')
 genes <- genes$gene_symbol
 
 fun_homoTO.FROMmouse <- function(genes, TO = TRUE ){
@@ -39,24 +39,49 @@ fun_homoTO.FROMmouse <- function(genes, TO = TRUE ){
 
 mapped_MusToHom <- fun_homoTO.FROMmouse(genes, FALSE)
 # !!!!! WARNING !!!!!!!!
-# beware that genes in column "HumanEnsembl" marked as NA, are not identified
+# beware that genes in column "HumanEnsemble" marked as NA, are not identified
 # correctly in "HumanGeneSymbol" column
 TopHDSGenesConverted <- 
   data.frame("MouseGeneSymbol" = head(genes,42),
-             "HumanEnsembl" = head(mapped_MusToHom$HOMO.ens, 42),
-             "HumanGeneID" = head(unname(unlist(mapped_MusToHom$HOMO)), 42))
+             "HumanEnsemble" = head(mapped_MusToHom$HOMO.ens, 42),
+             "HumanGeneSymbol" = head(unname(unlist(mapped_MusToHom$HOMO)), 42))
 sum(which(is.na(mapped_MusToHom$Homo.sapiens)) <= 42)
-# ==> 8 from 42 top genes not found 
+# ==> 10 from 42 top genes not found 
 # This will be identified looked into manually and decided what to do about them
 
-allGenes <- data.frame(MouseGeneSymbol = genes,
-                       HumanEnsembl = mapped_MusToHom$HOMO.ens,
-                       HumanGeneID = unname(unlist(mapped_MusToHom$HOMO)))
-
-write.csv(allGenes, 
+write.csv(TopHDSGenesConverted, 
             file = 
-              'hepatocyte-damage-score/Data/Output/HDAGmappedToHumanGenes.csv')
+              '~/Desktop/HepatocyteDamageScore/Universal Damage Signature/HDAGwithNAs.csv')
+
+## generate human version of HUDS leaving ambiguous genes out (marked with NA)
+
+mapped_MusToHom <- mapped_MusToHom[!is.na(mapped_MusToHom$Homo.sapiens),]
+
+TopHDSGenesConverted <- 
+  data.frame("MouseGeneSymbol" = row.names(mapped_MusToHom),
+             "MouseEntrezID" = mapped_MusToHom$Mus.musculus,
+             "HumanEnsembl" = mapped_MusToHom$HOMO.ens,
+             "HumanGeneSymbol" = unname(unlist(mapped_MusToHom$HOMO)))
+sum(is.na(TopHDSGenesConverted$MouseEntrezID))
 
 write.csv(TopHDSGenesConverted, 
           file = 
-            'hepatocyte-damage-score/Data/Output/HDAGTop42mappedToHumanGenes.csv')
+            '~/Desktop/HepatocyteDamageScore/Universal Damage Signature/HUDSforHDSMouseToHumanGenes.csv')
+
+
+#### Extra section 
+
+# Section to explore on whole list, which genes not matching  
+length(unique(mapped_MusToHom$Mus.musculus))
+# 728
+length(unique(mapped_MusToHom$HOMO.ens))
+# 671 ==> 57 genes in HUDS don't have a matching partner 
+
+# mouse genes not mapped to a Homo s. ensemble ID
+genesMissing <- unname(unlist(mapped_MusToHom$HOMO[which(is.na(mapped_MusToHom$HOMO.ens))]))
+genesMissing <- unname(unlist(mapped_MusToHom$HOMO[which(is.na(mapped_MusToHom$HOMO.ens))]))
+# [1]  59 339 356 550 632
+# mouse: what genes are not being identified
+which(is.na(mapped_MusToHom$Mus.musculus))
+# [1]  59 339 356 550 632
+
