@@ -1,0 +1,172 @@
+---
+title: "GSE119441 - Differentially Expressed Genes - Liver Disease"
+author: "Paula Unger Avila"
+date: "12/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About data: GSE119441
+Title: 'The effects of perfluorooctanoate on high fat diet induced non-alcoholic fatty liver disease in mice' 
+
+Experiment design: 
+'Two groups of mice were fed with either a control or high-fat diet for 16 weeks to induce normal or steatotic livers, respectively. Subsequently, mice from each diet group were treated with PFOA or vehicle for another 8 weeks. Each mouse was considered a biological replicate. A total of 4 groups with 4 mice in each group were used.'
+
+
+Disease models: two disease models 
+
+1) normal diet + vehicle vs HFD + vehicle 
+2) normal diet + vehicle vs normal diet + PFOA
+
+4 samples per condition 
+
+
+
+```{r count table}
+
+library(DESeq2)
+
+#setwd()
+GSE_ID <- 'GSE119441'
+temp <- read.delim('GSE119441_genecounts.txt', sep = '\t')
+annotation <- read.csv('SraRunTable.txt')
+
+# BEWARE (!!!)  it is very important to check manually that the columns of the count matrix correspond to the rows of the sample information table.
+counts <- as.matrix(temp[,c(2:17)])
+colnames(counts) <- annotation$Run
+rownames(counts) <- temp$id
+
+counts_HFD <- counts[,c(1:8)] 
+ann_HFD <- annotation[c(1:8),]
+
+counts_PFOA <- counts[,c(1,2,3,4,13,14,15,16)]
+ann_PFOA <- annotation[c(1,2,3,4,13,14,15,16),]
+
+
+# create a DESeqDataSet 
+ds_HFD <- DESeqDataSetFromMatrix(
+  countData = counts_HFD,
+  colData = ann_HFD,
+  design = ~ treatment )
+
+levels(ds_HFD$treatment)
+
+ds_PFOA <- DESeqDataSetFromMatrix(
+  countData = counts_PFOA,
+  colData = ann_PFOA,
+  design = ~ treatment )
+
+ds_PFOA$treatment <- relevel(ds_PFOA$treatment, 'CD + Vehicle')
+levels(ds_PFOA$treatment)
+
+ds <-  DESeqDataSetFromMatrix(
+  countData = counts,
+  colData = annotation,
+  design = ~ treatment )
+
+ds$treatment <- relevel(ds$treatment, 'CD + Vehicle' )
+levels(ds$treatment)
+  
+
+# remove rows with zero counts
+ds_HFD <- ds_HFD[rowSums(counts(ds_HFD)) > 1,]
+ds_PFOA <- ds_PFOA[rowSums(counts(ds_HFD)) > 1,]
+ds <- ds[rowSums(counts(ds)) > 1,]
+#vs transformed counts 
+vsd_hfd <- vst(ds_HFD, blind = T)
+vsd_pfoa <- vst(ds_PFOA, blind = T)
+vsd <- vst(ds, blind = T)
+#Euclidean distance between samples (they use transformed data)
+sampleDists_hfd  <- dist(t(assay(vsd_hfd)))
+sampleDists_pfoa  <- dist(t(assay(vsd_pfoa)))
+sampleDists <- dist(t(assay(vsd)))
+```
+
+## Exploring Data
+
+1. Heatmap of sample-to-sample distances using the variance stabilizing transformed values 
+
+```{r heatmap, echo=FALSE}
+library("pheatmap")
+library("RColorBrewer")
+
+sampleDistMatrix <- as.matrix( sampleDists)
+rownames(sampleDistMatrix) <- vsd$treatment
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+```
+```{r heatmap, echo=FALSE}
+
+sampleDistMatrix <- as.matrix( sampleDists_pfoa)
+rownames(sampleDistMatrix) <- vsd_pfoa$treatment
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists_pfoa,
+         clustering_distance_cols = sampleDists_pfoa,
+         col = colors)
+```
+
+3. PCA plot
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd_hfd, intgroup = 'treatment')
+plotPCA(vsd, intgroup = 'treatment')
+```
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd_pfoa, intgroup = 'treatment')
+
+```
+
+
+## Differential Expression Analysis 
+
+```{r differential expression analysis, echo=TRUE}
+
+ds_HFD <- DESeq(ds_HFD)
+ds_PFOA<- DESeq(ds_PFOA)
+
+print(summary(results(ds_HFD)))
+print(summary(results(ds_PFOA)))
+
+res_HFD <- results(ds_HFD)
+res_PFOA <- results(ds_PFOA)
+
+```
+
+## Output for liver disease score 
+
+Desired output is a table containing a subset of 200 genes with lowest p-values (not adjusted) and the following columns: (ENSEMBLE Gene IDs), Gene Symbol, log2FoldChange, p-value and p-adjusted. 
+
+In case the gene symbols are missing in the available count table, the Bioconductor package AnnotationDbi can be used to map the IDs to alternative gene names. 
+
+
+```{r output, echo=FALSE}
+# experimental design: ~ agent
+res_HFD <- res_HFD[order(res_HFD$pvalue),]
+res_PFOA <- res_PFOA[order(res_PFOA$pvalue),]
+
+output_HFD <- data.frame('Gene Symbol' = rownames(res_HFD), 
+                    'log2FoldChange' = res_HFD$log2FoldChange,
+                    'pvalue' = res_HFD$pvalue,
+                    'padj' = res_HFD$padj)
+
+output_PFOA <- data.frame('Gene Symbol' = rownames(res_PFOA), 
+                    'log2FoldChange' = res_PFOA$log2FoldChange,
+                    'pvalue' = res_PFOA$pvalue,
+                    'padj' = res_PFOA$padj)
+
+write.csv(output_HFD, file = paste(GSE_ID, '_HFD_ensembleid_deg.csv'), 
+          row.names = FALSE)
+write.csv(output_PFOA, file = paste(GSE_ID, '_PFOA_ensembleid_deg.csv'), 
+          row.names = FALSE)
+
+```

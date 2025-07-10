@@ -1,0 +1,157 @@
+---
+title: "GSE97234 - Differentially Expressed Genes - Liver Disease"
+author: "Paula Unger Avila"
+date: "12/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About data: GSE97234
+Title: 'Pyroptosis by Caspase11/4-Gasdermin-D Pathway in Alcoholic Hepatitis'
+
+Experiment: 
+'C57BL/6j mice had 2 weeks of ad libitum feeding of regular chow or solid diet high in cholesterol and saturated fat (HCFD) (Dyets Inc. #180529), surgical implantation of intragatric (iG) catheter, 1 week acclimatization with iG feeding of a control high fat diet (corn oil, 36%Cal) for 60% of daily caloric requirement and ad libitum feeding of HCFD or chow for the remaining 40%Cal, and switching to an ethanol high fat diet with incrementally increasing ethanol concentration over a 8 wk period for ethanol-fed mice. This hybrid feeding regimen produces chronic ASH, and superimposition of weekly ethanol binge shifts liver pathology to AH. For this AH model, ethanol binge was given weekly from the 2nd week by withdrawing ethanol infusion for 5-6 hours before and after the binge and administering an equivalent amount of ethanol withdrawn as a bolus in a concentrated solution (4~5g/kg). For control mice, isocaloric dextrose was given as a bolus in the identical manner.'
+
+(male mice)
+
+Disease models:
+
+10 samples: 
+4 control
+3 alcoholic hepatitis (AH)
+3 chronic alcoholic steatohepatitis (ASH)
+
+=> will have two outputs
+dif. expressed genes control vs. AH and diff. expressed ASH
+
+```{r count table}
+
+library(DESeq2)
+
+#setwd()
+GSE_ID <- 'GSE97234'
+temp <- read.csv('GSE97234_count_table', sep = ' ')
+annotation <- read.csv('SraRunTable.txt')
+
+# BEWARE (!!!)  it is very important to check manually that the columns of the count matrix correspond to the rows of the sample information table.
+
+counts <- as.matrix(temp[,c(2:11)])
+counts_ah <-as.matrix(temp[,c(2,3,4,5,9,10,11)])
+counts_ash <-as.matrix(temp[,c(2,3,4,5,6,7,8)])
+
+rownames(counts) <- temp$gene_symbol 
+rownames(counts_ah) <- temp$gene_symbol 
+rownames(counts_ash) <- temp$gene_symbol 
+
+annotation_ah <- annotation[c(1,2,3,4,8,9,10),]
+annotation_ash <- annotation[c(1,2,3,4,5,6,7),]
+remove(temp)
+
+# create a DESeqDataSet 
+ds <- DESeqDataSetFromMatrix(
+  countData = counts,
+  colData = annotation,
+  design = ~ disease_state )
+levels(ds$disease_state)
+ds$disease_state <- relevel(ds$disease_state, 'control')
+
+ds_ah <- DESeqDataSetFromMatrix(
+  countData = counts_ah,
+  colData = annotation_ah,
+  design = ~ disease_state )
+
+ds_ah$disease_state <- relevel(ds_ah$disease_state, 'control')
+
+ds_ash <- DESeqDataSetFromMatrix(
+  countData = counts_ash,
+  colData = annotation_ash,
+  design = ~ disease_state )
+
+ds_ash$disease_state <- relevel(ds_ash$disease_state, 'control')
+
+
+# remove rows with zero counts
+ds <- ds[rowSums(counts(ds)) > 1,]
+ds_ah <- ds_ah[rowSums(counts(ds_ah)) > 1,]
+ds_ash <- ds_ash[rowSums(counts(ds_ash)) > 1,]
+
+#vs transformed counts 
+vsd <- vst(ds, blind = T)
+
+#Euclidean distance between samples (they use transformed data)
+sampleDists <- dist(t(assay(vsd)))
+```
+
+## Exploring Data
+
+1. Heatmap of sample-to-sample distances using the variance stabilizing transformed values 
+
+```{r heatmap, echo=FALSE}
+library("pheatmap")
+library("RColorBrewer")
+
+sampleDistMatrix <- as.matrix( sampleDists )
+rownames(sampleDistMatrix) <- vsd$disease_state
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+```
+
+3. PCA plot
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd, intgroup = 'disease_state')
+```
+## Differential Expression Analysis 
+
+```{r differential expression analysis, echo=TRUE}
+
+# look at the differentially expressed genes for each state separately 
+
+ds_ah <- DESeq(ds_ah)
+ds_ash <- DESeq(ds_ash)
+
+print(summary(results(ds_ah)))
+print(summary(results(ds_ash)))
+
+res_ah <- results(ds_ah)
+res_ash <- results(ds_ash)
+
+```
+
+## Output for liver disease score 
+
+Desired output is a table containing a subset of 200 genes with lowest p-values (not adjusted) and the following columns: (ENSEMBLE Gene IDs), Gene Symbol, log2FoldChange, p-value and p-adjusted. 
+
+In case the gene symbols are misssing in the available count table, the Bioconductor package AnnotationDbi can be used to map the IDs to alternative gene names. 
+
+
+```{r output, echo=FALSE}
+
+res_ah <- res_ah[order(res_ah$pvalue),]
+res_ash <- res_ash[order(res_ash$pvalue),]
+
+output_ah <- data.frame('Gene Symbol' = rownames(res_ah), 
+                    'log2FoldChange' = res_ah$log2FoldChange,
+                    'pvalue' = res_ah$pvalue,
+                    'padj' = res_ah$padj)
+
+output_ash <- data.frame('Gene Symbol' = rownames(res_ash), 
+                    'log2FoldChange' = res_ash$log2FoldChange,
+                    'pvalue' = res_ash$pvalue,
+                    'padj' = res_ash$padj)
+
+write.csv(output_ah, file = paste(GSE_ID, '_AH_deg.csv'), 
+          row.names = FALSE)
+write.csv(output_ash, file = paste(GSE_ID, '_ASH_deg.csv'), 
+          row.names = FALSE)
+head(output_ah)
+head(output_ash)
+
+```

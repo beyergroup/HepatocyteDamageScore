@@ -1,0 +1,110 @@
+---
+title: "GSE111828 - Differentially Expressed Genes - Liver Disease"
+author: "Paula Unger Avila"
+date: "12/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About data: GSE111828
+Title: 'Transcriptional analysis of in vivo responses to acetaminophen induced hepatic injury in the murine liver' 
+
+Experiment design: 
+'RNA-seq analysis was performed on a total of 24 samples extracted from murine liver, post hepatic injury induced by acetaminophen administration. Transcriptional profiles were from replicate samples generated at defined time-points - 12, 24, 36, 48 and 72 hours post injury. Replicate samples were generated from 4 individual animals sacrificed at each time-point, and compared to a control cohort of 4 animals not subjected to acetaminophen treatment.'
+
+
+Disease models: Acetaminophen poisoning causes acute severe injury
+
+
+
+```{r count table}
+
+library(DESeq2)
+
+#setwd()
+GSE_ID <- 'GSE111828'
+temp <- read.csv('GSE111828_count_table', sep = ' ')
+annotation <- read.csv('SraRunTable.txt')
+
+# BEWARE (!!!)  it is very important to check manually that the columns of the count matrix correspond to the rows of the sample information table.
+
+counts <-as.matrix(temp[,c(2:25)])
+rownames(counts) <- temp$gene_symbol 
+remove(temp)
+
+# create a DESeqDataSet 
+ds <- DESeqDataSetFromMatrix(
+  countData = counts,
+  colData = annotation,
+  design = ~ agent )
+ds$agent <- relevel(ds$agent, 'control')
+
+# remove rows with zero counts
+ds <- ds[rowSums(counts(ds)) > 1,]
+
+#vs transformed counts 
+vsd <- vst(ds, blind = T)
+
+#Euclidean distance between samples (they use transformed data)
+sampleDists  <- dist(t(assay(vsd)))
+```
+
+## Exploring Data
+
+1. Heatmap of sample-to-sample distances using the variance stabilizing transformed values 
+
+```{r heatmap, echo=FALSE}
+library("pheatmap")
+library("RColorBrewer")
+
+sampleDistMatrix <- as.matrix( sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$agent,"-",vsd$time)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+```
+
+
+3. PCA plot
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd, intgroup = 'time')
+
+```
+## Differential Expression Analysis 
+
+```{r differential expression analysis, echo=TRUE}
+
+ds <- DESeq(ds)
+
+print(summary(results(ds)))
+res <- results(ds)
+
+```
+
+## Output for liver disease score 
+
+Desired output is a table containing a subset of 200 genes with lowest p-values (not adjusted) and the following columns: (ENSEMBLE Gene IDs), Gene Symbol, log2FoldChange, p-value and p-adjusted. 
+
+In case the gene symbols are missing in the available count table, the Bioconductor package AnnotationDbi can be used to map the IDs to alternative gene names. 
+
+
+```{r output, echo=FALSE}
+# experimental design: ~ agent
+res <- res[order(res$pvalue),]
+output <- data.frame('Gene Symbol' = rownames(res), 
+                    'log2FoldChange' = res$log2FoldChange,
+                    'pvalue' = res$pvalue,
+                    'padj' = res$padj)
+write.csv(output, file = paste(GSE_ID, '_Acetaminophen_deg.csv'), 
+          row.names = FALSE)
+head(res)
+remove(list = ls())
+
+```

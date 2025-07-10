@@ -1,0 +1,261 @@
+---
+title: "GSE119953 - Differentially Expressed Genes - Liver Disease"
+author: "Paula Unger Avila"
+date: "12/6/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About data: GSE119953
+Title: 'Animal model of acute-on-chronic alcoholic liver injury [DDC study]' 
+
+Experiment design: 
+'Adult male C57BL6/J mice were treated with 3,5-diethoxycarbonyl-1,4-dihydrocolidine (DDC) containing diet (0.05% w/w) to induce chronic liver fibrosis. Following DDC-induced fibrogenesis, ethyl alcohol (EtOH) (up to 27 g/ kg/day, up to 28 days) was administered continuously to mice via a gastric feeding tube (Tsukamoto-Frenchmodel of alcoholic liver disease).'
+(!!!) maybe ask Thomas about this disease model, not sure if I understand it right
+
+Disease models: 
+DDC to induce chronic liver fibrosis (and Tsukamoto-Frenchmodel of alcoholic liver disease ?)
+
+Samples that will be used for:
+two time-points: 0D and 28D after DDC application 
+1) DDC vs Control (BD)
+GSM3389290	#1 Control 0D
+GSM3389291	#2 Control 0D
+GSM3389292	#3 Control 0D
+GSM3389293	#4 Control 0D
+GSM3389294	#5 DDC 0D
+GSM3389295	#6 DDC 0D
+GSM3389296	#7 DDC 0D
+GSM3389297	#8 DDC 0D
+
+GSM3389298	#9 Control 28D
+GSM3389299	#10 Control 28D
+GSM3389300	#11 Control 28D
+GSM3389301	#12 Control 28D
+GSM3389302	#13 Control 28D
+
+GSM3389313	#24 DDC+Cont ??28 days???
+GSM3389314	#25 DDC+Cont
+GSM3389315	#26 DDC+Cont
+GSM3389316	#28 DDC+Cont
+GSM3389317	#29 DDC+Cont
+
+2) High Fat Diet vs. Control (BD)
+          
+GSM3389290	#1 Control 0D
+GSM3389291	#2 Control 0D
+GSM3389292	#3 Control 0D
+GSM3389293	#4 Control 0D
+GSM3389298	#9 Control 28D
+GSM3389299	#10 Control 28D
+GSM3389300	#11 Control 28D
+GSM3389301	#12 Control 28D
+GSM3389302	#13 Control 28D
+GSM3389303	#14 HFD
+GSM3389304	#15 HFD
+GSM3389305	#16 HFD
+GSM3389306	#17 HFD
+GSM3389307	#18 HFD
+GSM3389308	#19 HFD
+
+
+BD = basal diet (I suspect. It's another way of saying normal/chow )
+
+```{r count table}
+library(DESeq2)
+
+#setwd()
+GSE_ID <- 'GSE119953'
+temp <- read.csv('GSE119953_count_table', sep = ' ')
+annotation <- read.csv('SraRunTable.txt')
+
+## keep all samples to visualize everything together for later steps 
+annotation_all <- annotation 
+annotation_all$time <- c(rep('0 days', 8), rep('28 days', 32))
+annotation_all$treatment_summed <- paste(annotation_all$treatment_1, annotation_all$treatment_2, annotation_all$time) 
+counts_all <- as.matrix(temp[,-1])
+rownames(counts_all) <- temp$gene_symbol
+colnames(counts_all) <- annotation_all$Run
+
+ds_all <- DESeqDataSetFromMatrix(
+  countData = counts_all,
+  colData = annotation_all,
+  design = ~ treatment_summed)
+levels(ds_all$treatment_summed)
+ds_all <- ds_all[rowSums(counts(ds_all)) > 1,]
+vsd_all <- vst(ds_all, blind = T)
+sampleDists_all  <- dist(t(assay(vsd_all)))
+
+# BEWARE (!!!)  it is very important to check manually that the columns of the count matrix correspond to the rows of the sample information table.
+
+annotation <- annotation[c(1:28),]
+counts <-as.matrix(temp[,c(2:29)])
+rownames(counts) <- temp$gene_symbol 
+colnames(counts) <- annotation$Run
+#my own annotations of how I understand the data from GEO page + RUN annotations
+annotation$treatment_sum <- c('control','control', 'control', 'control',
+                              'DDC','DDC','DDC','DDC',
+                              'control','control','control','control','control',
+                              'HFD','HFD','HFD','HFD','HFD','HFD',
+                              'HFD EtOH', 'HFD EtOH','HFD EtOH','HFD EtOH', 
+                              'DDC','DDC','DDC','DDC','DDC')
+annotation$days <- c('0','0','0','0','0','0','0','0','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28','28')
+remove(temp)
+
+#subset for two disease models 
+# 1) DDC
+counts_DDC <- counts[,annotation[annotation$treatment_sum=='control' | annotation$treatment_sum== 'DDC', 'Run' ]]
+
+annotation_DDC <- annotation[annotation$treatment_sum=='control' | annotation$treatment_sum== 'DDC',]
+
+# 2) HFD
+counts_HFD <- counts[,annotation[annotation$treatment_sum=='control' | annotation$treatment_sum== 'HFD', 'Run' ]]
+
+annotation_HFD <- annotation[annotation$treatment_sum=='control' | annotation$treatment_sum== 'HFD',]
+
+# create a DESeqDataSet 
+ds <- DESeqDataSetFromMatrix(
+  countData = counts,
+  colData = annotation,
+  design = ~ treatment_sum)
+levels(ds$treatment_sum)
+
+#1) # create a DESeqDataSet 
+ds_DDC <- DESeqDataSetFromMatrix(
+  countData = counts_DDC,
+  colData = annotation_DDC,
+  design = ~ treatment_sum)
+levels(ds_DDC$treatment_sum)
+
+#2) # create a DESeqDataSet 
+ds_HFD <- DESeqDataSetFromMatrix(
+  countData = counts_HFD,
+  colData = annotation_HFD,
+  design = ~ treatment_sum)
+levels(ds_HFD$treatment_sum)
+
+
+# remove rows with zero counts
+ds <- ds[rowSums(counts(ds)) > 1,]
+ds_DDC <- ds_DDC[rowSums(counts(ds_DDC)) >1,]
+ds_HFD <- ds_HFD[rowSums(counts(ds_HFD)) >1,]
+
+#vs transformed counts 
+vsd <- vst(ds, blind = T)
+vsd_DDC <- vst(ds_DDC, blind = T)
+vsd_HFD <- vst(ds_HFD, blind = T)
+
+#Euclidean distance between samples (they use transformed data)
+sampleDists  <- dist(t(assay(vsd)))
+sampleDists_DDC <- dist(t(assay(vsd_DDC)))
+```
+
+## Exploring Data
+
+1. Heatmap of sample-to-sample distances using the variance stabilizing transformed values 
+
+```{r heatmap, echo=FALSE}
+library("pheatmap")
+library("RColorBrewer")
+
+sampleDistMatrix <- as.matrix( sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$treatment_sum,"-",vsd$days)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+```
+
+
+3. PCA plot
+-> consider removing two outliers??? 
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd, intgroup = c('treatment_sum','days'))
+
+```
+
+```{r PCA, echo = FALSE}
+plotPCA(vsd_all, intgroup = c('treatment_summed'))
+
+```
+
+# Heatmap and PCA plot only DDC data
+
+```{r heatmap subset, echo=FALSE}
+sampleDistMatrix <- as.matrix( sampleDists_DDS)
+rownames(sampleDistMatrix) <- paste(vsd_DDC$treatment_sum,"-",vsd_DDC$days)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists_DDS,
+         clustering_distance_cols = sampleDists_DDS,
+         col = colors)
+```
+```{r PCA subset, echo = FALSE}
+plotPCA(vsd_DDC, intgroup = c('treatment_sum','days'))
+plotPCA(vsd_HFD, intgroup = c('treatment_sum','days'))
+
+```
+```{r heatmap subset, echo=FALSE}
+sampleDistMatrix <- as.matrix( sampleDists_all)
+rownames(sampleDistMatrix) <- paste(vsd_all$treatment_summed)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists_all,
+         clustering_distance_cols = sampleDists_all,
+         col = colors)
+```
+
+## Differential Expression Analysis 
+
+```{r differential expression analysis, echo=FALSE}
+
+ds_DDC <- DESeq(ds_DDC)
+ds_HFD <- DESeq(ds_HFD)
+print(summary(results(ds_DDC)))
+print(summary(results(ds_HFD)))
+
+res_DDC <- results(ds_DDC)
+res_HFD <- results(ds_HFD)
+
+```
+
+## Output for liver disease score 
+
+Desired output is a table containing a subset of 200 genes with lowest p-values (not adjusted) and the following columns: (ENSEMBLE Gene IDs), Gene Symbol, log2FoldChange, p-value and p-adjusted. 
+
+In case the gene symbols are missing in the available count table, the Bioconductor package AnnotationDbi can be used to map the IDs to alternative gene names. 
+
+
+```{r output, echo=FALSE}
+# experimental design: ~ agent
+res_DDC <- res_DDC[order(res_DDC$pvalue),]
+res_HFD <- res_HFD[order(res_HFD$pvalue),]
+
+write.csv(data.frame('Gene Symbol' = rownames(res_DDC), 
+                    'log2FoldChange' = res_DDC$log2FoldChange,
+                    'pvalue' = res_DDC$pvalue,
+                    'padj' = res_DDC$padj), 
+          file = paste(GSE_ID,'_DDCn_deg.csv'), 
+          row.names = FALSE)
+
+write.csv(data.frame('Gene Symbol' = rownames(res_HFD), 
+                    'log2FoldChange' = res_HFD$log2FoldChange,
+                    'pvalue' = res_HFD$pvalue,
+                    'padj' = res_HFD$padj), 
+          file = paste(GSE_ID,'_HFD_deg.csv'), 
+          row.names = FALSE)
+head(res_DDC)
+head(res_HFD)
+#remove(list = ls())
+
+```
