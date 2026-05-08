@@ -13,7 +13,7 @@
   # - corresponding annotation
   # - List of Hepatocyte Damage Associated Genes 
   
-  source('SharedFunctions.R')
+  source('manuscript_repos/HepatocyteDamageScore/misc/SharedFunctions.R')
   library(Seurat)
   library(AUCell)
   library(ggplot2)
@@ -36,19 +36,18 @@
                ymax = quantile(x)[4])  # 3rd quartile
   }
 
-  outputPath <- 'hepatocyte-damage-score/Data/Output/Results/'
+  outputPath <- "manuscript_hds_other/" #'hepatocyte-damage-score/Data/Output/Results/'
   
   # Hepatocyte Universal Damage Signature
-  HDAG <- read.csv(file = 
-                     'hepatocyte-damage-score/Data/Output/HDAG.csv')
+  HDAG <- read.csv(file = "manuscript_repos/HepatocyteDamageScore/gene_sets_and_tables/HDAG.csv")
   
   #load  merged Seurat object 
   mergedLCAnucSeq <- 
-    readRDS('hepatocyte-damage-score/Data/Input/scRNAseq/LiverCellAtlas/countTable_mouseMerged_Hepatocytes_nucSeq.rds')
+    readRDS("manuscript_hds_other/countTable_mouseMerged_Hepatocytes_nucSeq.rds")
   
   # sample information needed for subsetting properly 
   sampleInfo <- 
-    read.csv('hepatocyte-damage-score/Data/Input/scRNAseq/LiverCellAtlas/GSE192740_sampleInfo_modified.csv', 
+    read.csv("manuscript_hds_other/GSE192740_sampleInfo_modified.csv", 
              sep = ";")
   
   # calculate percentage of mitochondrial RNA reads
@@ -299,18 +298,17 @@
 {
   # Need output from: Randomization_test.R
   # permutation plots
-  permuResults <- readRDS(
-    file = paste0(outputPath,
-                  'RandomizationTest/RandomizationWeightedHDSLCAmergedNuq24WeeksNAFLDCohort.rds'))
+  permuResults <- readRDS("manuscript_hds_other/RandomizationWeightedHDSLCAmergedNuq24WeeksNAFLDCohort.rds")
   
   # Format Results for better plotting
   toPlot <- Reduce(rbind, lapply(permuResults ,function(X) {
     X$value <- scale(X$value, scale = FALSE)
     return(X)
   }))
-  
+
   toPlot$HDS <- toPlot$value
   toPlot <- toPlot[,c(-2, -3)]
+  #toPlot$diet <- gsub(toPlot$cell, pattern = "_.*$", replacement = "")
   
   # add cohort and diet annotation 
   toPlot$diet <- as.factor(
@@ -347,6 +345,51 @@
     labs(x = "percent of studies randomized [%]")
   
   print(permViolin)
+
+    # plotting 
+    permBoxplot_with_outliers <- ggplot(toPlot, 
+      aes(x = random.percent, 
+          y = HDS, 
+          color = diet)) +
+      geom_boxplot(lwd = 1.5) +
+      theme_classic() +
+      scale_colour_colorblind() +
+      theme(
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        text = element_text(size=20)) +
+      labs(x = "percent of studies randomized [%]")
+  
+  # same plot, without plotting outliers 
+    permBoxplot <- ggplot(toPlot, 
+      aes(x = random.percent, 
+          y = HDS, 
+          color = diet)) +
+      geom_boxplot(lwd = 1.5,outliers = FALSE) +
+      theme_classic() +
+      scale_colour_colorblind() +
+      theme(
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        text = element_text(size=20)) +
+      labs(x = "percent of studies randomized [%]")
+  
+    ggsave(plot = permBoxplot_with_outliers, paste0(outputPath, "permBoxplot_without_outliers.png"), 
+    width = 25, height = 20, unit = "cm", dpi = 300)
+  
+  
+    ggsave(plot = permBoxplot_with_outliers, paste0(outputPath, "permBoxplot_without_outliers.pdf"), 
+    width = 25, height = 20, unit = "cm", dpi = 300)
+  
+  
+    ggsave(plot = permBoxplot, paste0(outputPath, "permBoxplot.png"), 
+    width = 25, height = 20, unit = "cm", dpi = 300)
+    
+  ggsave(plot = permBoxplot, paste0(outputPath, "permBoxplot.pdf"), 
+    width = 25, height = 20, unit = "cm", dpi = 300)
+
+
+print(permBoxplot)
   
 }
 
@@ -359,20 +402,20 @@ library(ggplot2)
 library(ggthemes)
 library(ggpubr)
 
-path_to_data <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/Xiao_snRNAseq_GSE189600/"
+path_to_data <- "cell-damage-score/hepatocyte-damage-score/Data/mouse/Xiao_snRNAseq_GSE189600/"
 setwd(path_to_data)
 
 # hepatocyte damage associated genes
 HDAG <- read.csv(
-  file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
+  file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
   sep = ',')
 
 # load functions to calculate HDS
-source('/cellfile/datapublic/pungerav/cell-damage-score/SharedFunctions.R')
+source('cell-damage-score/SharedFunctions.R')
 
 FileNames <- list.files(path = path_to_data)
 
-metaDataAnnotations <- read.table("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/annotation_files/Xiao_snRNAseq_GSE189600_scitranslmed.adc9653_data_file_s1.csv", 
+metaDataAnnotations <- read.table("cell-damage-score/hepatocyte-damage-score/Data/mouse/annotation_files/Xiao_snRNAseq_GSE189600_scitranslmed.adc9653_data_file_s1.csv", 
                                   sep = ';', dec = ',', header = TRUE)
 
 metaDataAnnotations$cellBarcode <- 

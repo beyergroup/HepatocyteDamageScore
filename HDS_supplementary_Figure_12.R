@@ -13,16 +13,16 @@
   # optional: load RDS with SCTransformed counts with HDS and SHGS calculated 
   # seurat_objects <- readRDS(paste0(path_to_data, "seurat_object_SCT_HDS_and_Senescence_scores.rds"))
   
-  path_to_data <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/carlessi_snRNAseq_GSE200366/"
+  path_to_data <- "cell-damage-score/hepatocyte-damage-score/Data/mouse/carlessi_snRNAseq_GSE200366/"
   setwd(path_to_data)
   
   # hepatocyte damage associated genes
   HDAG <- read.csv(
-    file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
+    file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
     sep = ',')
   
   #SHGS 
-  shgs_genes_mouse <- readRDS("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
+  shgs_genes_mouse <- readRDS("cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
   
   # load functions to calculate HDS
   source('SharedFunctions.R')
@@ -137,25 +137,25 @@
   #library(scater)
   library(scales)
   
-  pathData <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/Xiao_snRNAseq_GSE189600/"
+  pathData <- "cell-damage-score/hepatocyte-damage-score/Data/mouse/Xiao_snRNAseq_GSE189600/"
   setwd(pathData)
   
-  path_to_output <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/output/"
+  path_to_output <- "cell-damage-score/hepatocyte-damage-score/Data/mouse/output/"
   
   # hepatocyte damage associated genes
   HDAG <- read.csv(
-    file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
+    file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
     sep = ',')
   
   #SHGS 
-  shgs_genes_mouse <- readRDS("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
+  shgs_genes_mouse <- readRDS("cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
   
   # load functions to calculate HDS
-  source('/cellfile/datapublic/pungerav/cell-damage-score/SharedFunctions.R')
+  source('cell-damage-score/SharedFunctions.R')
   
   FileNames <- list.files(path = pathData)
   
-  metaDataAnnotations <- read.table("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/annotation_files/Xiao_snRNAseq_GSE189600_scitranslmed.adc9653_data_file_s1.csv", 
+  metaDataAnnotations <- read.table("cell-damage-score/hepatocyte-damage-score/Data/mouse/annotation_files/Xiao_snRNAseq_GSE189600_scitranslmed.adc9653_data_file_s1.csv", 
                                     sep = ';', dec = ',', header = TRUE)
   
   metaDataAnnotations$cellBarcode <- 
@@ -859,7 +859,7 @@
   
   options(future.globals.maxSize = 8000 * 1024^2)
   
-  path_to_data <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/human/Xiao_snRNAseq_GSE189600/"
+  path_to_data <- "cell-damage-score/hepatocyte-damage-score/Data/human/Xiao_snRNAseq_GSE189600/"
   
   setwd(path_to_data)
   
@@ -879,12 +879,12 @@
   
   # Hepatocyte Damage Associated Genes and function for calculating HDS 
   humanHDAG <- read.csv(
-    file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAGTop42mappedToHumanGenesManuallyModified",
+    file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAGTop42mappedToHumanGenesManuallyModified",
     sep = '\t')
   # dummy values, because rank should as in list
   humanHDAG$mean_rank <- 1:42
   
-  source('/cellfile/datapublic/pungerav/cell-damage-score/SharedFunctions.R')
+  source('cell-damage-score/SharedFunctions.R')
   
   sample_directories <- list.files(path_to_data) 
   sample_directories <- sample_directories[-c(1,2)]
@@ -939,7 +939,7 @@
   
   # Load SHGS:
   
-  shgs_genes <- readRDS("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025.rds")
+  shgs_genes <- readRDS("cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025.rds")
   shgs_genes <- shgs_genes$SHGS
 
   # Create a merged Seurat object 
@@ -1297,11 +1297,11 @@
   
   # hepatocyte damage associated genes
   HDAG <- read.csv(
-    file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
+    file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
     sep = ',')
   
   #SHGS 
-  shgs_genes_mouse <- readRDS("/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
+  shgs_genes_mouse <- readRDS("cell-damage-score/hepatocyte-damage-score/Data/misc/SHGS_Kuo_Du_2025_converted_to_mouse.rds")
   
   # load functions to calculate HDS
   source('SharedFunctions.R')

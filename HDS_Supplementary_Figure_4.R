@@ -208,7 +208,7 @@ stat_box_data <- function(y) {
   library(ggpubr)
   library(gridExtra)
   
-  path_to_data <- "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/mouse/williams_proteomics/"
+  path_to_data <- "cell-damage-score/hepatocyte-damage-score/Data/mouse/williams_proteomics/"
   data <- read.csv(paste0(path_to_data,"aTableS2_LIVER_DATA_Small.csv"), sep = ",")
   
   metadata <- data[1:52,]
@@ -233,11 +233,11 @@ stat_box_data <- function(y) {
   
   # hepatocyte damage associated genes
   HDAG <- read.csv(
-    file = "/cellfile/datapublic/pungerav/cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
+    file = "cell-damage-score/hepatocyte-damage-score/Data/Output/HDAG.csv",
     sep = ',')
   
   # load functions to calculate HDS
-  source('/cellfile/datapublic/pungerav/cell-damage-score/SharedFunctions.R')
+  source('cell-damage-score/SharedFunctions.R')
   
   
   HDS <- DS_calc.func(exprMatrices = data_prot, 
